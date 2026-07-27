@@ -8,19 +8,127 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+select,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.map-canvas {
+  background:
+    radial-gradient(circle at 42% 33%, rgba(245, 158, 11, 0.2) 0 1px, transparent 2px),
+    radial-gradient(circle at 55% 57%, rgba(245, 158, 11, 0.18) 0 1px, transparent 2px),
+    radial-gradient(circle at 68% 80%, rgba(245, 158, 11, 0.16) 0 1px, transparent 2px),
+    linear-gradient(115deg, transparent 0 28%, rgba(255, 255, 255, 0.55) 28.2% 29%, transparent 29.2%),
+    linear-gradient(35deg, transparent 0 38%, rgba(255, 255, 255, 0.45) 38.2% 39%, transparent 39.2%),
+    #cfe7eb;
+}
+
+.map-canvas::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background-image:
+    linear-gradient(78deg, transparent 0 42%, rgba(245, 158, 11, 0.45) 42.2% 42.35%, transparent 42.6%),
+    linear-gradient(126deg, transparent 0 48%, rgba(245, 158, 11, 0.35) 48.1% 48.28%, transparent 48.45%),
+    linear-gradient(16deg, transparent 0 57%, rgba(245, 158, 11, 0.32) 57.1% 57.22%, transparent 57.45%),
+    linear-gradient(101deg, transparent 0 64%, rgba(245, 158, 11, 0.28) 64.15% 64.25%, transparent 64.4%);
+  opacity: 0.8;
+}
+
+.map-canvas::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    radial-gradient(ellipse at 34% 72%, transparent 0 7%, #cfe7eb 7.2% 11%, transparent 11.2%),
+    radial-gradient(ellipse at 73% 95%, transparent 0 7%, #cfe7eb 7.2% 11%, transparent 11.2%),
+    radial-gradient(ellipse at 28% 22%, transparent 0 8%, #cfe7eb 8.2% 13%, transparent 13.2%);
+  opacity: 0.75;
+}
+
+.festival-marker {
+  position: absolute;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  border: 0;
+  background: #2859dc;
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow:
+    0 8px 16px rgba(37, 99, 235, 0.28),
+    0 0 0 8px rgba(37, 99, 235, 0.14);
+}
+
+.festival-marker-sm {
+  width: 52px;
+  height: 52px;
+  font-size: 17px;
+}
+
+.festival-marker-md {
+  width: 68px;
+  height: 68px;
+  font-size: 20px;
+}
+
+.festival-marker-lg {
+  width: 86px;
+  height: 86px;
+  font-size: 22px;
+}
+
+.naver-cluster-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.9);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow:
+    0 8px 16px rgba(15, 23, 42, 0.18),
+    0 0 0 8px rgba(37, 99, 235, 0.18);
+}
+
+.naver-cluster-bubble span {
+  transform: translateY(1px);
+}
+
+@media (max-width: 1024px) {
+  .festival-marker-sm {
+    width: 44px;
+    height: 44px;
+  }
+
+  .festival-marker-md {
+    width: 58px;
+    height: 58px;
+  }
+
+  .festival-marker-lg {
+    width: 72px;
+    height: 72px;
+  }
 }
