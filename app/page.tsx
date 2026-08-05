@@ -42,9 +42,6 @@ export default function Home() {
                 <select className="h-10 rounded border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm">
                   <option>시/도</option>
                 </select>
-                <select className="h-10 rounded border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm">
-                  <option>시/군</option>
-                </select>
               </div>
             </fieldset>
 

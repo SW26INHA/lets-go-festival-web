@@ -232,31 +232,7 @@ export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
           <input className="size-4 accent-blue-600" type="checkbox" defaultChecked />
           예정
         </label>
-        <button className="text-xl leading-none text-slate-700">+</button>
       </div>
-
-      {/*
-      <div className="absolute right-5 top-36 z-20 w-64 rounded-lg bg-white p-4 shadow-lg">
-        <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3 text-sm font-bold text-slate-900">
-          [축제타입]
-          <button className="text-xl text-blue-600">⌖</button>
-        </div>
-        <div className="space-y-2 text-sm text-slate-600">
-          <label className="flex items-center gap-2">
-            <input className="size-4 accent-blue-600" type="checkbox" />
-            문화예술
-          </label>
-          <label className="flex items-center gap-2">
-            <input className="size-4 accent-blue-600" type="checkbox" />
-            전통역사
-          </label>
-          <label className="flex items-center gap-2">
-            <input className="size-4 accent-blue-600" type="checkbox" />
-            생태자연
-          </label>
-        </div>
-      </div>
-      */}
 
       <div className="absolute bottom-6 left-5 z-20 rounded-lg bg-white px-5 py-4 text-sm font-bold text-slate-500 shadow-lg">
         <p className="mb-3 text-slate-600">버블 크기</p>
