@@ -85,6 +85,8 @@ export default function Home() {
               </div>
             </fieldset>
 
+            {/*
+            @TODO 추후 개발
             <fieldset>
               <legend className="mb-3 text-sm font-bold text-slate-900">
                 축제 타입
@@ -93,6 +95,7 @@ export default function Home() {
                 <option>전체</option>
               </select>
             </fieldset>
+            */}
 
             <div className="grid grid-cols-[110px_1fr] gap-2">
               <select className="h-10 rounded border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm">
