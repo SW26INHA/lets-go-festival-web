@@ -43,6 +43,10 @@ declare global {
 
 type NaverFestivalMapProps = {
   points: FestivalPoint[];
+  focusPoint?: {
+    lat: number;
+    lng: number;
+  } | null;
 };
 
 const naverMapKey = process.env.NEXT_PUBLIC_NAVER_MAP_NCP_KEY_ID;
@@ -69,7 +73,7 @@ function getMarkerHtml(point: FestivalPoint) {
   `;
 }
 
-export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
+export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMapProps) {
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<NaverMapInstance | null>(null);
   const markersRef = useRef<NaverMarkerInstance[]>([]);
@@ -83,14 +87,6 @@ export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
 
     return `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${naverMapKey}`;
   }, []);
-
-  const getNaverMapSuccess = (position: GeolocationPosition) => {
-
-  }
-
-  const getNaverMapError = (error: GeolocationPositionError) => {
-    console.error("Geolocation error:", error);
-  }
 
   useEffect(() => {
     if (!scriptReady || !mapElementRef.current || !window.naver?.maps) {
@@ -144,6 +140,18 @@ export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
       mapRef.current = null;
     };
   }, [scriptReady, points]);
+
+  useEffect(() => {
+    if (!focusPoint || !mapRef.current || !window.naver?.maps || !scriptReady) {
+      return;
+    }
+
+    const maps = window.naver.maps;
+    const map = mapRef.current;
+
+    map.setCenter(new maps.LatLng(focusPoint.lat, focusPoint.lng));
+    map.setZoom(Math.max(map.getZoom(), 10));
+  }, [focusPoint, scriptReady]);
 
   const zoomIn = () => {
     const map = mapRef.current;
@@ -209,17 +217,6 @@ export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
           type="button"
         >
           -
-        </button>
-      </div>
-
-      <div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 overflow-hidden rounded-lg bg-white shadow-lg">
-        <button className="flex h-11 items-center gap-2 border-b-2 border-blue-600 px-7 text-sm font-bold text-blue-600">
-          <span className="text-lg">⌖</span>
-          축제 지도
-        </button>
-        <button className="flex h-11 items-center gap-2 px-7 text-sm font-bold text-slate-500">
-          <span className="text-lg">□</span>
-          내 주변 축제
         </button>
       </div>
 
