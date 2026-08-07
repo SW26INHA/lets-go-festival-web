@@ -43,6 +43,10 @@ declare global {
 
 type NaverFestivalMapProps = {
   points: FestivalPoint[];
+  focusPoint?: {
+    lat: number;
+    lng: number;
+  } | null;
 };
 
 const naverMapKey = process.env.NEXT_PUBLIC_NAVER_MAP_NCP_KEY_ID;
@@ -69,7 +73,7 @@ function getMarkerHtml(point: FestivalPoint) {
   `;
 }
 
-export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
+export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMapProps) {
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<NaverMapInstance | null>(null);
   const markersRef = useRef<NaverMarkerInstance[]>([]);
@@ -83,14 +87,6 @@ export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
 
     return `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${naverMapKey}`;
   }, []);
-
-  const getNaverMapSuccess = (position: GeolocationPosition) => {
-
-  }
-
-  const getNaverMapError = (error: GeolocationPositionError) => {
-    console.error("Geolocation error:", error);
-  }
 
   useEffect(() => {
     if (!scriptReady || !mapElementRef.current || !window.naver?.maps) {
@@ -144,6 +140,18 @@ export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
       mapRef.current = null;
     };
   }, [scriptReady, points]);
+
+  useEffect(() => {
+    if (!focusPoint || !mapRef.current || !window.naver?.maps || !scriptReady) {
+      return;
+    }
+
+    const maps = window.naver.maps;
+    const map = mapRef.current;
+
+    map.setCenter(new maps.LatLng(focusPoint.lat, focusPoint.lng));
+    map.setZoom(Math.max(map.getZoom(), 10));
+  }, [focusPoint, scriptReady]);
 
   const zoomIn = () => {
     const map = mapRef.current;
@@ -212,17 +220,6 @@ export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
         </button>
       </div>
 
-      <div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 overflow-hidden rounded-lg bg-white shadow-lg">
-        <button className="flex h-11 items-center gap-2 border-b-2 border-blue-600 px-7 text-sm font-bold text-blue-600">
-          <span className="text-lg">⌖</span>
-          축제 지도
-        </button>
-        <button className="flex h-11 items-center gap-2 px-7 text-sm font-bold text-slate-500">
-          <span className="text-lg">□</span>
-          내 주변 축제
-        </button>
-      </div>
-
       <div className="absolute right-5 top-10 z-20 flex items-center gap-5 rounded-lg bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-lg">
         <label className="flex items-center gap-2">
           <input className="size-4 accent-blue-600" type="checkbox" defaultChecked />
@@ -232,32 +229,8 @@ export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
           <input className="size-4 accent-blue-600" type="checkbox" defaultChecked />
           예정
         </label>
-        <button className="text-xl leading-none text-slate-700">+</button>
       </div>
 <<<<<<< Updated upstream
-
-      {/*
-      <div className="absolute right-5 top-36 z-20 w-64 rounded-lg bg-white p-4 shadow-lg">
-        <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3 text-sm font-bold text-slate-900">
-          [축제타입]
-          <button className="text-xl text-blue-600">⌖</button>
-        </div>
-        <div className="space-y-2 text-sm text-slate-600">
-          <label className="flex items-center gap-2">
-            <input className="size-4 accent-blue-600" type="checkbox" />
-            문화예술
-          </label>
-          <label className="flex items-center gap-2">
-            <input className="size-4 accent-blue-600" type="checkbox" />
-            전통역사
-          </label>
-          <label className="flex items-center gap-2">
-            <input className="size-4 accent-blue-600" type="checkbox" />
-            생태자연
-          </label>
-        </div>
-      </div>
-      */}
 
       <div className="absolute bottom-6 left-5 z-20 rounded-lg bg-white px-5 py-4 text-sm font-bold text-slate-500 shadow-lg">
         <p className="mb-3 text-slate-600">버블 크기</p>
