@@ -234,6 +234,7 @@ export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
         </label>
         <button className="text-xl leading-none text-slate-700">+</button>
       </div>
+<<<<<<< Updated upstream
 
       {/*
       <div className="absolute right-5 top-36 z-20 w-64 rounded-lg bg-white p-4 shadow-lg">
@@ -275,6 +276,8 @@ export default function NaverFestivalMap({ points }: NaverFestivalMapProps) {
           </div>
         </div>
       </div>
+=======
+>>>>>>> Stashed changes
     </section>
   );
 }

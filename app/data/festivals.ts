@@ -7,8 +7,10 @@ export type FestivalPoint = {
   lat: number;
   lng: number;
   count: number;
+  imageUrl: string;
 };
 
+<<<<<<< Updated upstream
 export const festivals: FestivalPoint[] = [
   {
     id: "seoul",
@@ -19,6 +21,39 @@ export const festivals: FestivalPoint[] = [
     lat: 37.5665,
     lng: 126.978,
     count: 8,
+=======
+const regionNameMap = new Map(regions.map((region) => [region.regionIdx, region.regionName]));
+
+const regionBuckets = festivalRecords.reduce<Map<number, FestivalRecord[]>>((buckets, festival) => {
+  const current = buckets.get(festival.regionIdx) ?? [];
+  current.push(festival);
+  buckets.set(festival.regionIdx, current);
+  return buckets;
+}, new Map());
+
+export const festivals: FestivalPoint[] = Array.from(regionBuckets.entries()).map(
+  ([regionIdx, entries]) => {
+    const primary = entries[0];
+    const regionName = regionNameMap.get(regionIdx) ?? primary.regionName;
+    const status =
+      entries.some((festival) => festival.status === "ONGOING")
+        ? "진행중"
+        : entries.some((festival) => festival.status === "UPCOMING")
+          ? "예정"
+          : "종료";
+
+    return {
+      id: String(regionIdx),
+      name: `${regionName} 축제`,
+      region: regionName,
+      category: "축제",
+      status,
+      lat: primary.latitude,
+      lng: primary.longitude,
+      count: entries.length,
+      imageUrl: primary.thumbnailImageUrl,
+    };
+>>>>>>> Stashed changes
   },
   {
     id: "incheon",
