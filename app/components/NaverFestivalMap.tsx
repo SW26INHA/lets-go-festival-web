@@ -230,6 +230,7 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
           예정
         </label>
       </div>
+<<<<<<< Updated upstream
 
       <div className="absolute bottom-6 left-5 z-20 rounded-lg bg-white px-5 py-4 text-sm font-bold text-slate-500 shadow-lg">
         <p className="mb-3 text-slate-600">버블 크기</p>
@@ -248,6 +249,8 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
           </div>
         </div>
       </div>
+=======
+>>>>>>> Stashed changes
     </section>
   );
 }

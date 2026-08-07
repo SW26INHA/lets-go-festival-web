@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import type {
   ApiResponse,
   FestivalListData,
@@ -70,7 +70,7 @@ function selectTriggerClassName() {
   return [
     "h-10 w-full appearance-none rounded-2xl border border-slate-200 bg-white px-3 pr-10",
     "text-sm text-slate-700 shadow-sm outline-none transition",
-    "focus:border-emerald-300 focus:ring-2 focus:ring-emerald-100",
+    "focus:border-blue-300 focus:ring-2 focus:ring-blue-100",
   ].join(" ");
 }
 
@@ -82,7 +82,7 @@ function statusChipClassName(selected: boolean) {
   return [
     "flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition",
     selected
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      ? "border-blue-200 bg-blue-50 text-blue-700"
       : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
   ].join(" ");
 }
@@ -128,7 +128,7 @@ function FestivalListHeader({
   onReset: () => void;
 }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 shadow-sm">
+    <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-white px-4 py-3 shadow-sm">
       <div className="min-w-0">
         <h2 className="text-base font-bold leading-tight text-slate-900">{title}</h2>
         <p className="mt-1.5 text-xs leading-5 text-slate-500">{description}</p>
@@ -153,7 +153,7 @@ function FestivalCardButton({
 }) {
   return (
     <button
-      className="w-full rounded-2xl border border-emerald-100 bg-white p-3 text-left shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50/40"
+      className="w-full rounded-2xl border border-blue-100 bg-white p-3 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40"
       onClick={onClick}
       type="button"
     >
@@ -215,6 +215,9 @@ export default function FestivalSidebar({
           searchSummary.length > 0 ? ` · ${searchSummary.join(" · ")}` : ""
         }`
       : `총 ${searchResults.totalElements}건`;
+  useEffect(() => {
+    void loadDefaultFestivalList();
+     }, []);
 
   function buildSearchParams(filters: SearchFiltersState | null, page: number) {
     const params = new URLSearchParams();
@@ -393,13 +396,13 @@ export default function FestivalSidebar({
   };
 
   return (
-    <aside className="flex h-[calc(100vh-44px)] flex-col overflow-hidden border-r border-emerald-100 bg-[#f7faf8] max-lg:h-auto max-lg:min-h-0 max-lg:border-b max-lg:border-r-0">
+    <aside className="flex h-[calc(100vh-44px)] flex-col overflow-hidden border-r border-blue-100 bg-[#f8fbff] max-lg:h-auto max-lg:min-h-0 max-lg:border-b max-lg:border-r-0">
       <section className="px-6 pt-5">
         <div className="grid grid-cols-2 border-b border-slate-200 text-center text-base font-bold">
           <button
             className={`border-b-3 pb-3 ${
               activeTab === "search"
-                ? "border-emerald-600 text-emerald-600"
+                ? "border-blue-600 text-blue-600"
                 : "border-transparent text-slate-500"
             }`}
             onClick={() => setActiveTab("search")}
@@ -410,13 +413,13 @@ export default function FestivalSidebar({
           <button
             className={`border-b-3 pb-3 ${
               activeTab === "popular"
-                ? "border-emerald-600 text-emerald-600"
+                ? "border-blue-600 text-blue-600"
                 : "border-transparent text-slate-500"
             }`}
             onClick={handlePopularTabClick}
             type="button"
           >
-            자주 찾는 축제
+            축제 목록
           </button>
         </div>
       </section>
@@ -504,7 +507,7 @@ export default function FestivalSidebar({
             </div>
           </fieldset>
 
-          <div className="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm">
+          <div className="rounded-2xl border border-blue-100 bg-white p-3 shadow-sm">
             <div className="flex items-center gap-2">
               <input
                 className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm"
@@ -518,7 +521,7 @@ export default function FestivalSidebar({
               <div className="mt-3 flex flex-wrap gap-2">
                 {filterSummary.map((item) => (
                   <span
-                    className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100"
+                    className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700 ring-1 ring-blue-100"
                     key={item}
                   >
                     {item}
@@ -530,7 +533,7 @@ export default function FestivalSidebar({
 
           <div className="flex items-center gap-2 pt-1">
             <button
-              className="h-11 flex-1 rounded-full bg-emerald-600 text-base font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+              className="h-11 flex-1 rounded-full bg-blue-600 text-base font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
               disabled={loading}
               onClick={handleSearch}
               type="button"
@@ -549,7 +552,7 @@ export default function FestivalSidebar({
       ) : null}
 
       {activeTab === "popular" ? (
-        <section className="flex min-h-0 flex-1 flex-col border-t border-slate-100 bg-[#f7faf8] px-5 pb-5 pt-3">
+        <section className="flex min-h-0 flex-1 flex-col border-t border-slate-100 bg-[#f8fbff] px-5 pb-5 pt-3">
           <FestivalListHeader
             description={popularTabDescription}
             onReset={handleListReset}
@@ -577,42 +580,6 @@ export default function FestivalSidebar({
               }
             }}
           >
-            {listMode === "all" ? (
-              <div className="space-y-3">
-                {displayedPopularFestivals.map((festival) => (
-                  <FestivalCardButton
-                    key={festival.id}
-                    onClick={() => handleFestivalSelect(festival)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex size-16 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-cyan-100 text-lg font-black text-emerald-700">
-                        {festival.count}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="truncate text-sm font-bold text-slate-900">
-                            {festival.name}
-                          </h3>
-                          <span
-                            className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ring-1 ${statusBadgeClass(
-                              festival.status,
-                            )}`}
-                          >
-                            {festival.status}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-xs leading-5 text-slate-500">
-                          {buildPopularSummary(festival)}
-                        </p>
-                        <p className="mt-2 text-xs font-medium text-slate-600">
-                          {festival.category}
-                        </p>
-                      </div>
-                    </div>
-                  </FestivalCardButton>
-                ))}
-              </div>
-            ) : (
               <div className="space-y-3">
                 {searchResults.festivals.length > 0 ? (
                   searchResults.festivals.map((festival) => (
@@ -626,7 +593,7 @@ export default function FestivalSidebar({
                       key={festival.festivalId}
                     >
                       <div className="flex gap-3">
-                        <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-emerald-50">
+                        <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-blue-50">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             alt={festival.title}
@@ -675,7 +642,6 @@ export default function FestivalSidebar({
                   </div>
                 ) : null}
               </div>
-            )}
           </div>
         </section>
       ) : null}

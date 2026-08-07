@@ -17,6 +17,7 @@ export type FestivalPoint = {
   lat: number;
   lng: number;
   count: number;
+  imageUrl: string;
 };
 
 const regionNameMap = new Map(regions.map((region) => [region.regionIdx, region.regionName]));
