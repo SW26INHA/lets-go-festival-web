@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FestivalPoint } from "@/app/data/festivals";
+import type { FestivalPoint } from "@/app/types/festival-types";
 
 type NaverMapInstance = {
   destroy?: () => void;
@@ -13,6 +13,18 @@ type NaverMapInstance = {
 
 type NaverMarkerInstance = {
   setMap: (map: NaverMapInstance | null) => void;
+};
+
+type NaverInfoWindowInstance = {
+  open: (map: NaverMapInstance, marker: NaverMarkerInstance) => void;
+  close: () => void;
+};
+
+type FestivalCluster = {
+  id: string;
+  lat: number;
+  lng: number;
+  points: FestivalPoint[];
 };
 
 type NaverMapsNamespace = {
@@ -28,6 +40,7 @@ type NaverMapsNamespace = {
     element: HTMLElement,
     options: Record<string, unknown>,
   ) => NaverMapInstance;
+  InfoWindow: new (options: Record<string, unknown>) => NaverInfoWindowInstance;
   Marker: new (options: Record<string, unknown>) => NaverMarkerInstance;
   Point: new (x: number, y: number) => unknown;
   Size: new (width: number, height: number) => unknown;
@@ -66,10 +79,223 @@ function getMarkerSize(count: number) {
 function getMarkerHtml(point: FestivalPoint) {
   const size = getMarkerSize(point.count);
 
+  if (!point.imageUrl) {
+    return `
+      <button class="naver-cluster-bubble" style="width:${size}px;height:${size}px" aria-label="${point.region} 축제 ${point.count}개">
+      </button>
+    `;
+  }
+
   return `
-    <button class="naver-cluster-bubble" style="width:${size}px;height:${size}px" aria-label="${point.region} 축제 ${point.count}개">
-      <span>${point.count}</span>
+    <button
+      class="naver-cluster-bubble naver-cluster-bubble--image"
+      style="width:${size}px;height:${size}px;background-image:url('${point.imageUrl}');"
+      aria-label="${point.region} 축제 ${point.count}개"
+    >
     </button>
+  `;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function buildHoverCardHtml(point: FestivalPoint) {
+  const imageBlock = point.imageUrl
+    ? `<img src="${escapeHtml(point.imageUrl)}" alt="${escapeHtml(
+        point.name,
+      )}" style="width:72px;height:72px;object-fit:cover;border-radius:14px;flex-shrink:0;" />`
+    : `<div style="width:72px;height:72px;border-radius:14px;background:#e0ecff;flex-shrink:0;"></div>`;
+
+  return `
+    <div style="
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:260px;
+      max-width:320px;
+      padding:12px 14px;
+      border-radius:18px;
+      background:#ffffff;
+      box-shadow:0 14px 30px rgba(15, 23, 42, 0.16);
+      border:1px solid #dbe8ff;
+    ">
+      ${imageBlock}
+      <div style="min-width:0;flex:1;">
+        <div style="
+          display:flex;
+          align-items:flex-start;
+          justify-content:space-between;
+          gap:8px;
+        ">
+          <strong style="
+            display:block;
+            font-size:14px;
+            line-height:1.35;
+            color:#0f172a;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+          ">${escapeHtml(point.name)}</strong>
+          <span style="
+            flex-shrink:0;
+            padding:4px 8px;
+            border-radius:999px;
+            background:#eff6ff;
+            color:#2563eb;
+            font-size:11px;
+            font-weight:700;
+          ">${escapeHtml(point.status)}</span>
+        </div>
+        <p style="
+          margin:6px 0 0;
+          font-size:12px;
+          line-height:1.5;
+          color:#64748b;
+          overflow:hidden;
+          display:-webkit-box;
+          -webkit-line-clamp:2;
+          -webkit-box-orient:vertical;
+        ">${escapeHtml(point.region)} · ${escapeHtml(point.category)}</p>
+      </div>
+    </div>
+  `;
+}
+
+function getClusterCellSize(zoom: number) {
+  if (zoom <= 7) {
+    return 0.42;
+  }
+
+  if (zoom <= 8) {
+    return 0.24;
+  }
+
+  if (zoom <= 9) {
+    return 0.12;
+  }
+
+  if (zoom <= 10) {
+    return 0.05;
+  }
+
+  if (zoom <= 11) {
+    return 0.02;
+  }
+
+  if (zoom <= 12) {
+    return 0.008;
+  }
+
+  return 0;
+}
+
+function clusterPoints(points: FestivalPoint[], zoom: number): FestivalCluster[] {
+  const cellSize = getClusterCellSize(zoom);
+
+  if (cellSize === 0) {
+    return points.map((point) => ({
+      id: point.id,
+      lat: point.lat,
+      lng: point.lng,
+      points: [point],
+    }));
+  }
+
+  const buckets = new Map<string, FestivalPoint[]>();
+
+  points.forEach((point) => {
+    const latBucket = Math.round(point.lat / cellSize);
+    const lngBucket = Math.round(point.lng / cellSize);
+    const key = `${latBucket}:${lngBucket}`;
+    const current = buckets.get(key) ?? [];
+
+    current.push(point);
+    buckets.set(key, current);
+  });
+
+  return Array.from(buckets.entries()).map(([key, bucketPoints]) => {
+    const totals = bucketPoints.reduce(
+      (acc, item) => ({
+        lat: acc.lat + item.lat,
+        lng: acc.lng + item.lng,
+      }),
+      { lat: 0, lng: 0 },
+    );
+
+    return {
+      id: key,
+      lat: totals.lat / bucketPoints.length,
+      lng: totals.lng / bucketPoints.length,
+      points: bucketPoints,
+    };
+  });
+}
+
+function getClusterHtml(cluster: FestivalCluster) {
+  const size = getMarkerSize(cluster.points.length);
+
+  return `
+    <button
+      class="naver-cluster-bubble"
+      style="width:${size}px;height:${size}px"
+      aria-label="축제 ${cluster.points.length}개 묶음"
+    ></button>
+  `;
+}
+
+function buildClusterHoverHtml(cluster: FestivalCluster) {
+  return `
+    <div style="
+      min-width:300px;
+      max-width:360px;
+      padding:12px 12px 10px;
+      border-radius:18px;
+      background:#ffffff;
+      box-shadow:0 14px 30px rgba(15, 23, 42, 0.16);
+      border:1px solid #dbe8ff;
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+        <div>
+          <strong style="display:block;font-size:14px;line-height:1.35;color:#0f172a;">
+            축제 목록 ${escapeHtml(String(cluster.points.length))}개
+          </strong>
+          <span style="display:block;margin-top:3px;font-size:12px;color:#64748b;">
+            가까운 위치의 축제를 묶어 보여줘요
+          </span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow:auto;padding-right:2px;">
+        ${cluster.points
+          .map(
+            (item) => `
+              <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:14px;background:#f8fbff;border:1px solid #e5eefc;">
+                ${
+                  item.imageUrl
+                    ? `<img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(
+                        item.name,
+                      )}" style="width:44px;height:44px;object-fit:cover;border-radius:12px;flex-shrink:0;" />`
+                    : `<div style="width:44px;height:44px;border-radius:12px;background:#dbeafe;flex-shrink:0;"></div>`
+                }
+                <div style="min-width:0;flex:1;">
+                  <div style="font-size:13px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    ${escapeHtml(item.name)}
+                  </div>
+                  <div style="margin-top:2px;font-size:11px;color:#64748b;">
+                    ${escapeHtml(item.status)} · ${escapeHtml(item.region)}
+                  </div>
+                </div>
+              </div>
+            `,
+          )
+          .join("")}
+      </div>
+    </div>
   `;
 }
 
@@ -77,6 +303,7 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<NaverMapInstance | null>(null);
   const markersRef = useRef<NaverMarkerInstance[]>([]);
+  const infoWindowsRef = useRef<NaverInfoWindowInstance[]>([]);
   const [scriptReady, setScriptReady] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
@@ -97,6 +324,8 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
 
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
+    infoWindowsRef.current.forEach((infoWindow) => infoWindow.close());
+    infoWindowsRef.current = [];
 
     const map = new maps.Map(mapElementRef.current, {
       center: new maps.LatLng(36.45, 127.8),
@@ -111,31 +340,73 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
 
     mapRef.current = map;
 
-    markersRef.current = points.map((point) => {
-      const size = getMarkerSize(point.count);
+    const renderMarkers = () => {
+      markersRef.current.forEach((marker) => marker.setMap(null));
+      markersRef.current = [];
+      infoWindowsRef.current.forEach((infoWindow) => infoWindow.close());
+      infoWindowsRef.current = [];
 
-      const marker = new maps.Marker({
-        position: new maps.LatLng(point.lat, point.lng),
-        map,
-        title: point.name,
-        icon: {
-          content: getMarkerHtml(point),
-          size: new maps.Size(size, size),
-          anchor: new maps.Point(size / 2, size / 2),
-        },
+      const zoom = map.getZoom();
+      const clusters = clusterPoints(points, zoom);
+
+      markersRef.current = clusters.map((cluster) => {
+        const isCluster = cluster.points.length > 1;
+        const primaryPoint = cluster.points[0];
+        const size = getMarkerSize(cluster.points.length);
+        const infoWindow = new maps.InfoWindow({
+          content: isCluster
+            ? buildClusterHoverHtml(cluster)
+            : buildHoverCardHtml(primaryPoint),
+          borderWidth: 0,
+          backgroundColor: "transparent",
+          disableAnchor: true,
+          pixelOffset: new maps.Point(0, -8),
+        });
+
+        const marker = new maps.Marker({
+          position: new maps.LatLng(cluster.lat, cluster.lng),
+          map,
+          title: isCluster
+            ? `${primaryPoint.region} 축제 ${cluster.points.length}개`
+            : primaryPoint.name,
+          icon: {
+            content: isCluster ? getClusterHtml(cluster) : getMarkerHtml(primaryPoint),
+            size: new maps.Size(size, size),
+            anchor: new maps.Point(size / 2, size / 2),
+          },
+        });
+
+        maps.Event.addListener(marker, "click", () => {
+          const target = new maps.LatLng(cluster.lat, cluster.lng);
+          const targetZoom = isCluster ? Math.min(zoom + 2, 14) : 14;
+
+          map.setCenter(target);
+          map.setZoom(targetZoom);
+        });
+
+        maps.Event.addListener(marker, "mouseover", () => {
+          infoWindow.open(map, marker);
+        });
+
+        maps.Event.addListener(marker, "mouseout", () => {
+          infoWindow.close();
+        });
+
+        infoWindowsRef.current.push(infoWindow);
+
+        return marker;
       });
+    };
 
-      maps.Event.addListener(marker, "click", () => {
-        map.setCenter(new maps.LatLng(point.lat, point.lng));
-        map.setZoom(Math.max(map.getZoom(), 10));
-      });
+    renderMarkers();
 
-      return marker;
-    });
+    maps.Event.addListener(map, "zoom_changed", renderMarkers);
 
     return () => {
       markersRef.current.forEach((marker) => marker.setMap(null));
       markersRef.current = [];
+      infoWindowsRef.current.forEach((infoWindow) => infoWindow.close());
+      infoWindowsRef.current = [];
       map.destroy?.();
       mapRef.current = null;
     };
@@ -148,9 +419,10 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
 
     const maps = window.naver.maps;
     const map = mapRef.current;
+    const target = new maps.LatLng(focusPoint.lat, focusPoint.lng);
 
-    map.setCenter(new maps.LatLng(focusPoint.lat, focusPoint.lng));
-    map.setZoom(Math.max(map.getZoom(), 10));
+    map.setCenter(target);
+    map.setZoom(14);
   }, [focusPoint, scriptReady]);
 
   const zoomIn = () => {
@@ -218,35 +490,6 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
         >
           -
         </button>
-      </div>
-
-      <div className="absolute right-5 top-10 z-20 flex items-center gap-5 rounded-lg bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-lg">
-        <label className="flex items-center gap-2">
-          <input className="size-4 accent-blue-600" type="checkbox" defaultChecked />
-          진행중
-        </label>
-        <label className="flex items-center gap-2">
-          <input className="size-4 accent-blue-600" type="checkbox" defaultChecked />
-          예정
-        </label>
-      </div>
-      
-      <div className="absolute bottom-6 left-5 z-20 rounded-lg bg-white px-5 py-4 text-sm font-bold text-slate-500 shadow-lg">
-        <p className="mb-3 text-slate-600">버블 크기</p>
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <span className="size-4 rounded-full bg-blue-600" />
-            1~4개
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="size-6 rounded-full bg-blue-600" />
-            5~7개
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="size-8 rounded-full bg-blue-600" />
-            8개 이상
-          </div>
-        </div>
       </div>
     </section>
   );

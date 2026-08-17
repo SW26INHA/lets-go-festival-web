@@ -1,15 +1,109 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import FestivalSidebar from "@/app/components/FestivalSidebar";
 import NaverFestivalMap from "@/app/components/NaverFestivalMap";
-import { festivals, regions } from "@/app/data/festivals";
+import type {
+  ApiResponse,
+  FestivalPoint,
+  FestivalMapData,
+  Region,
+  RegionsData,
+} from "@/app/types/festival-types";
+
+const apiBaseUrl =
+  process.env.NEXT_PUBLIC_FESTIVAL_API_BASE_URL ??
+  "https://lets-go-festival-backend.onrender.com";
+
+function createApiUrl(path: string) {
+  return `${apiBaseUrl.replace(/\/$/, "")}${path}`;
+}
 
 export default function Home() {
-  const [focusPoint, setFocusPoint] = useState<{
-    lat: number;
-    lng: number;
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [mapPoints, setMapPoints] = useState<FestivalPoint[]>([]);
+  const [selectedFestival, setSelectedFestival] = useState<{
+    festivalId: string;
+    nonce: number;
   } | null>(null);
+  const focusPoint = useMemo(() => {
+    if (!selectedFestival) {
+      return null;
+    }
+
+    const targetPoint = mapPoints.find((point) => point.id === selectedFestival.festivalId);
+
+    if (!targetPoint) {
+      return null;
+    }
+
+    return {
+      lat: targetPoint.lat,
+      lng: targetPoint.lng,
+    };
+  }, [mapPoints, selectedFestival]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadRegions() {
+      try {
+        const response = await fetch(createApiUrl("/api/v1/regions"), {
+          signal: controller.signal,
+        });
+        const payload = (await response.json()) as ApiResponse<RegionsData>;
+
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.message || "시/도 목록을 불러오지 못했습니다.");
+        }
+
+        setRegions(payload.data.regions);
+      } catch {
+        setRegions([]);
+      }
+    }
+
+    void loadRegions();
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadMapPoints() {
+      try {
+        const response = await fetch(createApiUrl("/api/v1/festivals/map"), {
+          signal: controller.signal,
+        });
+        const payload = (await response.json()) as ApiResponse<FestivalMapData>;
+
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.message || "지도용 축제 목록을 불러오지 못했습니다.");
+        }
+
+        const nextPoints: FestivalPoint[] = payload.data.festivals.map((festival) => ({
+          id: String(festival.festivalIdx),
+          name: `축제 ${festival.festivalIdx}`,
+          region: "축제",
+          category: "축제",
+          status: "진행중",
+          lat: festival.latitude,
+          lng: festival.longitude,
+          count: 1,
+          imageUrl: festival.thumbnailImageUrl,
+        }));
+
+        setMapPoints(nextPoints);
+      } catch {
+        setMapPoints([]);
+      }
+    }
+
+    void loadMapPoints();
+
+    return () => controller.abort();
+  }, []);
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-800">
@@ -22,22 +116,19 @@ export default function Home() {
             전국 축제 지도
           </h1>
         </div>
-
-        <nav className="flex items-center gap-6 text-sm font-semibold">
-          <a className="flex items-center gap-1.5 text-slate-500" href="#">
-            <span className="text-xs">☰</span>
-            목록 보기
-          </a>
-        </nav>
       </header>
 
       <div className="grid min-h-[calc(100vh-44px)] grid-cols-[360px_minmax(0,1fr)] max-lg:grid-cols-1">
         <FestivalSidebar
-          onFestivalSelect={setFocusPoint}
-          popularFestivals={festivals}
+          onFestivalSelect={(festivalId) => {
+            setSelectedFestival({
+              festivalId,
+              nonce: Date.now(),
+            });
+          }}
           regions={regions}
         />
-        <NaverFestivalMap focusPoint={focusPoint} points={festivals} />
+        <NaverFestivalMap focusPoint={focusPoint} points={mapPoints} />
       </div>
     </main>
   );

@@ -1,23 +1,22 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import type {
   ApiResponse,
+  FestivalPoint,
   FestivalListData,
   FestivalStatus,
   Region,
-} from "@/app/data/festival-mock";
+} from "@/app/types/festival-types";
 import {
   festivalMonths,
   festivalStatusOptions,
   festivalYears,
-} from "@/app/data/festival-mock";
-import type { FestivalPoint } from "@/app/data/festivals";
+} from "@/app/constants/festival-constants";
 
 type FestivalSidebarProps = {
-  popularFestivals: FestivalPoint[];
   regions: Region[];
-  onFestivalSelect: (point: { lat: number; lng: number }) => void;
+  onFestivalSelect: (festivalIdx: string) => void;
 };
 
 type SearchResultState = {
@@ -41,6 +40,13 @@ type SearchFiltersState = {
 type ListMode = "search" | "all";
 
 const defaultStatuses: FestivalStatus[] = ["ONGOING", "UPCOMING"];
+const defaultPopularFilters: SearchFiltersState = {
+  regionIdx: "",
+  year: "",
+  month: "",
+  keyword: "",
+  selectedStatuses: ["ONGOING"],
+};
 
 function statusLabel(status: FestivalStatus) {
   return festivalStatusOptions.find((option) => option.value === status)?.label ?? status;
@@ -60,10 +66,6 @@ function statusBadgeClass(status: FestivalStatus | FestivalPoint["status"]) {
 
 function formatDate(date: string) {
   return date.replaceAll("-", ".");
-}
-
-function buildPopularSummary(point: FestivalPoint) {
-  return `${point.region} · 축제 ${point.count}개`;
 }
 
 function selectTriggerClassName() {
@@ -162,8 +164,15 @@ function FestivalCardButton({
   );
 }
 
+const apiBaseUrl =
+  process.env.NEXT_PUBLIC_FESTIVAL_API_BASE_URL ??
+  "https://lets-go-festival-backend.onrender.com";
+
+function createApiUrl(path: string) {
+  return `${apiBaseUrl.replace(/\/$/, "")}${path}`;
+}
+
 export default function FestivalSidebar({
-  popularFestivals,
   regions,
   onFestivalSelect,
 }: FestivalSidebarProps) {
@@ -189,7 +198,6 @@ export default function FestivalSidebar({
     last: true,
   });
 
-  const displayedPopularFestivals = useMemo(() => popularFestivals, [popularFestivals]);
   const filterSummary = useMemo(
     () => buildFilterSummary(regions, regionIdx, year, month, selectedStatuses),
     [regions, regionIdx, year, month, selectedStatuses],
@@ -208,16 +216,13 @@ export default function FestivalSidebar({
     [regions, searchFilters],
   );
   const popularTabTitle =
-    listMode === "search" ? "검색 결과" : "전체 축제";
+    listMode === "search" ? "검색 결과" : "진행중 축제";
   const popularTabDescription =
     listMode === "search"
       ? `총 ${searchResults.totalElements}건${
           searchSummary.length > 0 ? ` · ${searchSummary.join(" · ")}` : ""
         }`
       : `총 ${searchResults.totalElements}건`;
-  useEffect(() => {
-    void loadDefaultFestivalList();
-     }, []);
 
   function buildSearchParams(filters: SearchFiltersState | null, page: number) {
     const params = new URLSearchParams();
@@ -249,7 +254,9 @@ export default function FestivalSidebar({
   }
 
   async function fetchFestivalList(filters: SearchFiltersState | null, page: number) {
-    const response = await fetch(`/api/v1/festivals?${buildSearchParams(filters, page).toString()}`);
+    const response = await fetch(
+      createApiUrl(`/api/v1/festivals?${buildSearchParams(filters, page).toString()}`),
+    );
     const payload = (await response.json()) as ApiResponse<FestivalListData>;
 
     if (!response.ok || !payload.success) {
@@ -327,7 +334,10 @@ export default function FestivalSidebar({
 
     try {
       const nextPage = searchResults.page + 1;
-      const data = await fetchFestivalList(listMode === "search" ? searchFilters : null, nextPage);
+      const data = await fetchFestivalList(
+        listMode === "search" ? searchFilters : defaultPopularFilters,
+        nextPage,
+      );
 
       setSearchResults((current) => ({
         ...data,
@@ -345,14 +355,14 @@ export default function FestivalSidebar({
   const loadDefaultFestivalList = async () => {
     try {
       setLoading(true);
-      const data = await fetchFestivalList(null, 1);
+      const data = await fetchFestivalList(defaultPopularFilters, 1);
       setSearchResults(data);
       setListMode("all");
       setSearchFilters(null);
       setActiveTab("popular");
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "전체 축제 목록을 불러오는 중 오류가 발생했습니다.",
+        error instanceof Error ? error.message : "진행중 축제 목록을 불러오는 중 오류가 발생했습니다.",
       );
       setSearchResults({
         festivals: [],
@@ -390,8 +400,8 @@ export default function FestivalSidebar({
     void loadDefaultFestivalList();
   };
 
-  const handleFestivalSelect = (point: { lat: number; lng: number }) => {
-    onFestivalSelect(point);
+  const handleFestivalSelect = (festivalId: string) => {
+    onFestivalSelect(festivalId);
     setActiveTab("popular");
   };
 
@@ -584,13 +594,8 @@ export default function FestivalSidebar({
                 {searchResults.festivals.length > 0 ? (
                   searchResults.festivals.map((festival) => (
                     <FestivalCardButton
-                      onClick={() =>
-                        handleFestivalSelect({
-                          lat: festival.latitude,
-                          lng: festival.longitude,
-                        })
-                      }
-                      key={festival.festivalId}
+                      onClick={() => handleFestivalSelect(String(festival.festivalIdx))}
+                      key={festival.festivalIdx}
                     >
                       <div className="flex gap-3">
                         <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-blue-50">
