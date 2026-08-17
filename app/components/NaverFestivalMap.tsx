@@ -21,13 +21,6 @@ type NaverInfoWindowInstance = {
   close: () => void;
 };
 
-type FestivalCluster = {
-  id: string;
-  lat: number;
-  lng: number;
-  points: FestivalPoint[];
-};
-
 type NaverMapsNamespace = {
   Event: {
     addListener: (
@@ -174,141 +167,6 @@ function buildHoverCardHtml(point: FestivalPoint) {
   `;
 }
 
-function getClusterCellSize(zoom: number) {
-  if (zoom <= 7) {
-    return 0.42;
-  }
-
-  if (zoom <= 8) {
-    return 0.24;
-  }
-
-  if (zoom <= 9) {
-    return 0.12;
-  }
-
-  if (zoom <= 10) {
-    return 0.05;
-  }
-
-  if (zoom <= 11) {
-    return 0.02;
-  }
-
-  if (zoom <= 12) {
-    return 0.008;
-  }
-
-  return 0;
-}
-
-function clusterPoints(points: FestivalPoint[], zoom: number): FestivalCluster[] {
-  const cellSize = getClusterCellSize(zoom);
-
-  if (cellSize === 0) {
-    return points.map((point) => ({
-      id: String(point.festivalIdx),
-      lat: point.latitude,
-      lng: point.longitude,
-      points: [point],
-    }));
-  }
-
-  const buckets = new Map<string, FestivalPoint[]>();
-
-  points.forEach((point) => {
-    const latBucket = Math.round(point.latitude / cellSize);
-    const lngBucket = Math.round(point.longitude / cellSize);
-    const key = `${latBucket}:${lngBucket}`;
-    const current = buckets.get(key) ?? [];
-
-    current.push(point);
-    buckets.set(key, current);
-  });
-
-  return Array.from(buckets.entries()).map(([key, bucketPoints]) => {
-    const totals = bucketPoints.reduce(
-      (acc, item) => ({
-        lat: acc.lat + item.latitude,
-        lng: acc.lng + item.longitude,
-      }),
-      { lat: 0, lng: 0 },
-    );
-
-    return {
-      id: key,
-      lat: totals.lat / bucketPoints.length,
-      lng: totals.lng / bucketPoints.length,
-      points: bucketPoints,
-    };
-  });
-}
-
-function getClusterHtml(cluster: FestivalCluster) {
-  const size = getMarkerSize(cluster.points.length);
-
-  return `
-    <button
-      class="naver-cluster-bubble"
-      style="width:${size}px;height:${size}px"
-      aria-label="축제 ${cluster.points.length}개 묶음"
-    ></button>
-  `;
-}
-
-function buildClusterHoverHtml(cluster: FestivalCluster) {
-  return `
-    <div style="
-      min-width:300px;
-      max-width:360px;
-      padding:12px 12px 10px;
-      border-radius:18px;
-      background:#ffffff;
-      box-shadow:0 14px 30px rgba(15, 23, 42, 0.16);
-      border:1px solid #dbe8ff;
-    ">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
-        <div>
-          <strong style="display:block;font-size:14px;line-height:1.35;color:#0f172a;">
-            축제 목록 ${String(cluster.points.length)}개
-          </strong>
-          <span style="display:block;margin-top:3px;font-size:12px;color:#64748b;">
-            가까운 위치의 축제를 묶어 보여줘요
-          </span>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow:auto;padding-right:2px;">
-        ${cluster.points
-          .map(
-            (item) => `
-              <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:14px;background:#f8fbff;border:1px solid #e5eefc;">
-                ${
-                  item.thumbnailImageUrl
-                    ? `<img src="${item.thumbnailImageUrl}" alt="${
-                        item.title
-                      }" style="width:44px;height:44px;object-fit:cover;border-radius:12px;flex-shrink:0;" />`
-                    : `<div style="width:44px;height:44px;border-radius:12px;background:#dbeafe;flex-shrink:0;"></div>`
-                }
-                <div style="min-width:0;flex:1;">
-                  <div style="font-size:13px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                    ${item.title}
-                  </div>
-                  <div style="margin-top:2px;font-size:11px;color:#64748b;">
-                    ${statusLabel(item.status)} · ${item.address1}
-                  </div>
-                  <div style="margin-top:2px;font-size:11px;color:#64748b;">
-                    ${formatDate(item.eventStartDate)} ~ ${formatDate(item.eventEndDate)}
-                  </div>
-                </div>
-              </div>
-            `,
-          )
-          .join("")}
-      </div>
-    </div>
-  `;
-}
-
 export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMapProps) {
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<NaverMapInstance | null>(null);
@@ -326,17 +184,11 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
   }, []);
 
   useEffect(() => {
-    if (!scriptReady || !mapElementRef.current || !window.naver?.maps) {
+    if (!scriptReady || !mapElementRef.current || !window.naver?.maps || mapRef.current) {
       return;
     }
 
     const maps = window.naver.maps;
-
-    markersRef.current.forEach((marker) => marker.setMap(null));
-    markersRef.current = [];
-    infoWindowsRef.current.forEach((infoWindow) => infoWindow.close());
-    infoWindowsRef.current = [];
-
     const map = new maps.Map(mapElementRef.current, {
       center: new maps.LatLng(36.45, 127.8),
       zoom: 7,
@@ -350,75 +202,71 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
 
     mapRef.current = map;
 
-    const renderMarkers = () => {
-      markersRef.current.forEach((marker) => marker.setMap(null));
-      markersRef.current = [];
-      infoWindowsRef.current.forEach((infoWindow) => infoWindow.close());
-      infoWindowsRef.current = [];
-
-      const zoom = map.getZoom();
-      const clusters = clusterPoints(points, zoom);
-
-      markersRef.current = clusters.map((cluster) => {
-        const isCluster = cluster.points.length > 1;
-        const primaryPoint = cluster.points[0];
-        const size = getMarkerSize(cluster.points.length);
-        const infoWindow = new maps.InfoWindow({
-          content: isCluster
-            ? buildClusterHoverHtml(cluster)
-            : buildHoverCardHtml(primaryPoint),
-          borderWidth: 0,
-          backgroundColor: "transparent",
-          disableAnchor: true,
-          pixelOffset: new maps.Point(0, -8),
-        });
-
-        const marker = new maps.Marker({
-          position: new maps.LatLng(cluster.lat, cluster.lng),
-          map,
-          title: isCluster
-            ? `${primaryPoint.address1} 축제 ${cluster.points.length}개`
-            : primaryPoint.title,
-          icon: {
-            content: isCluster ? getClusterHtml(cluster) : getMarkerHtml(primaryPoint),
-            size: new maps.Size(size, size),
-            anchor: new maps.Point(size / 2, size / 2),
-          },
-        });
-
-        maps.Event.addListener(marker, "click", () => {
-          const target = new maps.LatLng(cluster.lat, cluster.lng);
-          const targetZoom = isCluster ? Math.min(zoom + 2, 14) : 14;
-
-          map.setCenter(target);
-          map.setZoom(targetZoom);
-        });
-
-        maps.Event.addListener(marker, "mouseover", () => {
-          infoWindow.open(map, marker);
-        });
-
-        maps.Event.addListener(marker, "mouseout", () => {
-          infoWindow.close();
-        });
-
-        infoWindowsRef.current.push(infoWindow);
-
-        return marker;
-      });
+    return () => {
+      map.destroy?.();
+      mapRef.current = null;
     };
+  }, [scriptReady]);
 
-    renderMarkers();
+  useEffect(() => {
+    if (!scriptReady || !mapRef.current || !window.naver?.maps) {
+      return;
+    }
 
-    maps.Event.addListener(map, "zoom_changed", renderMarkers);
+    const maps = window.naver.maps;
+    const map = mapRef.current;
+
+    markersRef.current.forEach((marker) => marker.setMap(null));
+    markersRef.current = [];
+    infoWindowsRef.current.forEach((infoWindow) => infoWindow.close());
+    infoWindowsRef.current = [];
+
+    markersRef.current = points.map((point) => {
+      const size = getMarkerSize(point.count);
+      const infoWindow = new maps.InfoWindow({
+        content: buildHoverCardHtml(point),
+        borderWidth: 0,
+        backgroundColor: "transparent",
+        disableAnchor: true,
+        pixelOffset: new maps.Point(0, -8),
+      });
+
+      const marker = new maps.Marker({
+        position: new maps.LatLng(point.latitude, point.longitude),
+        map,
+        title: point.title,
+        icon: {
+          content: getMarkerHtml(point),
+          size: new maps.Size(size, size),
+          anchor: new maps.Point(size / 2, size / 2),
+        },
+      });
+
+      maps.Event.addListener(marker, "click", () => {
+        const target = new maps.LatLng(point.latitude, point.longitude);
+
+        map.setCenter(target);
+        map.setZoom(14);
+      });
+
+      maps.Event.addListener(marker, "mouseover", () => {
+        infoWindow.open(map, marker);
+      });
+
+      maps.Event.addListener(marker, "mouseout", () => {
+        infoWindow.close();
+      });
+
+      infoWindowsRef.current.push(infoWindow);
+
+      return marker;
+    });
 
     return () => {
       markersRef.current.forEach((marker) => marker.setMap(null));
       markersRef.current = [];
       infoWindowsRef.current.forEach((infoWindow) => infoWindow.close());
       infoWindowsRef.current = [];
-      map.destroy?.();
-      mapRef.current = null;
     };
   }, [scriptReady, points]);
 
@@ -434,6 +282,64 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
     map.setCenter(target);
     map.setZoom(14);
   }, [focusPoint, scriptReady]);
+
+  useEffect(() => {
+    if (!scriptReady || !mapRef.current) {
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      const map = mapRef.current;
+
+      if (!map || !window.naver?.maps) {
+        return;
+      }
+
+      const maps = window.naver.maps;
+      const seoul = new maps.LatLng(37.5665, 126.978);
+
+      map.setCenter(seoul);
+      map.setZoom(12);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const map = mapRef.current;
+
+        if (!map || !window.naver?.maps) {
+          return;
+        }
+
+        const maps = window.naver.maps;
+        const target = new maps.LatLng(
+          position.coords.latitude,
+          position.coords.longitude,
+        );
+
+        map.setCenter(target);
+        map.setZoom(14);
+      },
+      () => {
+        const map = mapRef.current;
+
+        if (!map || !window.naver?.maps) {
+          return;
+        }
+
+        const maps = window.naver.maps;
+        const seoul = new maps.LatLng(37.5665, 126.978);
+
+        map.setCenter(seoul);
+        map.setZoom(12);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      },
+    );
+  }, [scriptReady]);
 
   const zoomIn = () => {
     const map = mapRef.current;
