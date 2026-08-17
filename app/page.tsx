@@ -23,7 +23,7 @@ export default function Home() {
   const [regions, setRegions] = useState<Region[]>([]);
   const [mapPoints, setMapPoints] = useState<FestivalPoint[]>([]);
   const [selectedFestival, setSelectedFestival] = useState<{
-    festivalId: string;
+    festivalIdx: string;
     nonce: number;
   } | null>(null);
   const focusPoint = useMemo(() => {
@@ -31,15 +31,17 @@ export default function Home() {
       return null;
     }
 
-    const targetPoint = mapPoints.find((point) => point.id === selectedFestival.festivalId);
+    const targetPoint = mapPoints.find(
+      (point) => String(point.festivalIdx) === selectedFestival.festivalIdx,
+    );
 
     if (!targetPoint) {
       return null;
     }
 
     return {
-      lat: targetPoint.lat,
-      lng: targetPoint.lng,
+      lat: targetPoint.latitude,
+      lng: targetPoint.longitude,
     };
   }, [mapPoints, selectedFestival]);
 
@@ -83,15 +85,8 @@ export default function Home() {
         }
 
         const nextPoints: FestivalPoint[] = payload.data.festivals.map((festival) => ({
-          id: String(festival.festivalIdx),
-          name: `축제 ${festival.festivalIdx}`,
-          region: "축제",
-          category: "축제",
-          status: "진행중",
-          lat: festival.latitude,
-          lng: festival.longitude,
+          ...festival,
           count: 1,
-          imageUrl: festival.thumbnailImageUrl,
         }));
 
         setMapPoints(nextPoints);
@@ -120,9 +115,9 @@ export default function Home() {
 
       <div className="grid min-h-[calc(100vh-44px)] grid-cols-[360px_minmax(0,1fr)] max-lg:grid-cols-1">
         <FestivalSidebar
-          onFestivalSelect={(festivalId) => {
+          onFestivalSelect={(festivalIdx) => {
             setSelectedFestival({
-              festivalId,
+              festivalIdx,
               nonce: Date.now(),
             });
           }}

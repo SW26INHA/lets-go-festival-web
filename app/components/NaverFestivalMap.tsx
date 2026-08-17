@@ -2,7 +2,8 @@
 
 import Script from "next/script";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FestivalPoint } from "@/app/types/festival-types";
+import type { FestivalPoint, FestivalStatus } from "@/app/types/festival-types";
+import { festivalStatusOptions } from "@/app/constants/festival-constants";
 
 type NaverMapInstance = {
   destroy?: () => void;
@@ -64,6 +65,14 @@ type NaverFestivalMapProps = {
 
 const naverMapKey = process.env.NEXT_PUBLIC_NAVER_MAP_NCP_KEY_ID;
 
+function statusLabel(status: FestivalStatus) {
+  return festivalStatusOptions.find((option) => option.value === status)?.label ?? status;
+}
+
+function formatDate(date: string) {
+  return date.replaceAll("-", ".");
+}
+
 function getMarkerSize(count: number) {
   if (count >= 8) {
     return 72;
@@ -78,10 +87,11 @@ function getMarkerSize(count: number) {
 
 function getMarkerHtml(point: FestivalPoint) {
   const size = getMarkerSize(point.count);
+  const imageUrl = point.thumbnailImageUrl;
 
-  if (!point.imageUrl) {
+  if (!imageUrl) {
     return `
-      <button class="naver-cluster-bubble" style="width:${size}px;height:${size}px" aria-label="${point.region} 축제 ${point.count}개">
+      <button class="naver-cluster-bubble" style="width:${size}px;height:${size}px" aria-label="${point.title}">
       </button>
     `;
   }
@@ -89,27 +99,18 @@ function getMarkerHtml(point: FestivalPoint) {
   return `
     <button
       class="naver-cluster-bubble naver-cluster-bubble--image"
-      style="width:${size}px;height:${size}px;background-image:url('${point.imageUrl}');"
-      aria-label="${point.region} 축제 ${point.count}개"
+      style="width:${size}px;height:${size}px;background-image:url('${imageUrl}');"
+      aria-label="${point.title}"
     >
     </button>
   `;
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
 function buildHoverCardHtml(point: FestivalPoint) {
-  const imageBlock = point.imageUrl
-    ? `<img src="${escapeHtml(point.imageUrl)}" alt="${escapeHtml(
-        point.name,
-      )}" style="width:72px;height:72px;object-fit:cover;border-radius:14px;flex-shrink:0;" />`
+  const imageBlock = point.thumbnailImageUrl
+    ? `<img src="${point.thumbnailImageUrl}" alt="${
+        point.title
+      }" style="width:72px;height:72px;object-fit:cover;border-radius:14px;flex-shrink:0;" />`
     : `<div style="width:72px;height:72px;border-radius:14px;background:#e0ecff;flex-shrink:0;"></div>`;
 
   return `
@@ -141,7 +142,7 @@ function buildHoverCardHtml(point: FestivalPoint) {
             white-space:nowrap;
             overflow:hidden;
             text-overflow:ellipsis;
-          ">${escapeHtml(point.name)}</strong>
+          ">${point.title}</strong>
           <span style="
             flex-shrink:0;
             padding:4px 8px;
@@ -150,7 +151,7 @@ function buildHoverCardHtml(point: FestivalPoint) {
             color:#2563eb;
             font-size:11px;
             font-weight:700;
-          ">${escapeHtml(point.status)}</span>
+          ">${statusLabel(point.status)}</span>
         </div>
         <p style="
           margin:6px 0 0;
@@ -161,7 +162,13 @@ function buildHoverCardHtml(point: FestivalPoint) {
           display:-webkit-box;
           -webkit-line-clamp:2;
           -webkit-box-orient:vertical;
-        ">${escapeHtml(point.region)} · ${escapeHtml(point.category)}</p>
+        ">${point.address1}</p>
+        <p style="margin:6px 0 0;font-size:12px;line-height:1.5;color:#64748b;">
+          ${formatDate(point.eventStartDate)} ~ ${formatDate(point.eventEndDate)}
+        </p>
+        <p style="margin:2px 0 0;font-size:12px;line-height:1.5;color:#64748b;">
+          ${point.telephone}
+        </p>
       </div>
     </div>
   `;
@@ -200,9 +207,9 @@ function clusterPoints(points: FestivalPoint[], zoom: number): FestivalCluster[]
 
   if (cellSize === 0) {
     return points.map((point) => ({
-      id: point.id,
-      lat: point.lat,
-      lng: point.lng,
+      id: String(point.festivalIdx),
+      lat: point.latitude,
+      lng: point.longitude,
       points: [point],
     }));
   }
@@ -210,8 +217,8 @@ function clusterPoints(points: FestivalPoint[], zoom: number): FestivalCluster[]
   const buckets = new Map<string, FestivalPoint[]>();
 
   points.forEach((point) => {
-    const latBucket = Math.round(point.lat / cellSize);
-    const lngBucket = Math.round(point.lng / cellSize);
+    const latBucket = Math.round(point.latitude / cellSize);
+    const lngBucket = Math.round(point.longitude / cellSize);
     const key = `${latBucket}:${lngBucket}`;
     const current = buckets.get(key) ?? [];
 
@@ -222,8 +229,8 @@ function clusterPoints(points: FestivalPoint[], zoom: number): FestivalCluster[]
   return Array.from(buckets.entries()).map(([key, bucketPoints]) => {
     const totals = bucketPoints.reduce(
       (acc, item) => ({
-        lat: acc.lat + item.lat,
-        lng: acc.lng + item.lng,
+        lat: acc.lat + item.latitude,
+        lng: acc.lng + item.longitude,
       }),
       { lat: 0, lng: 0 },
     );
@@ -263,7 +270,7 @@ function buildClusterHoverHtml(cluster: FestivalCluster) {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
         <div>
           <strong style="display:block;font-size:14px;line-height:1.35;color:#0f172a;">
-            축제 목록 ${escapeHtml(String(cluster.points.length))}개
+            축제 목록 ${String(cluster.points.length)}개
           </strong>
           <span style="display:block;margin-top:3px;font-size:12px;color:#64748b;">
             가까운 위치의 축제를 묶어 보여줘요
@@ -276,18 +283,21 @@ function buildClusterHoverHtml(cluster: FestivalCluster) {
             (item) => `
               <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:14px;background:#f8fbff;border:1px solid #e5eefc;">
                 ${
-                  item.imageUrl
-                    ? `<img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(
-                        item.name,
-                      )}" style="width:44px;height:44px;object-fit:cover;border-radius:12px;flex-shrink:0;" />`
+                  item.thumbnailImageUrl
+                    ? `<img src="${item.thumbnailImageUrl}" alt="${
+                        item.title
+                      }" style="width:44px;height:44px;object-fit:cover;border-radius:12px;flex-shrink:0;" />`
                     : `<div style="width:44px;height:44px;border-radius:12px;background:#dbeafe;flex-shrink:0;"></div>`
                 }
                 <div style="min-width:0;flex:1;">
                   <div style="font-size:13px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                    ${escapeHtml(item.name)}
+                    ${item.title}
                   </div>
                   <div style="margin-top:2px;font-size:11px;color:#64748b;">
-                    ${escapeHtml(item.status)} · ${escapeHtml(item.region)}
+                    ${statusLabel(item.status)} · ${item.address1}
+                  </div>
+                  <div style="margin-top:2px;font-size:11px;color:#64748b;">
+                    ${formatDate(item.eventStartDate)} ~ ${formatDate(item.eventEndDate)}
                   </div>
                 </div>
               </div>
@@ -367,8 +377,8 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
           position: new maps.LatLng(cluster.lat, cluster.lng),
           map,
           title: isCluster
-            ? `${primaryPoint.region} 축제 ${cluster.points.length}개`
-            : primaryPoint.name,
+            ? `${primaryPoint.address1} 축제 ${cluster.points.length}개`
+            : primaryPoint.title,
           icon: {
             content: isCluster ? getClusterHtml(cluster) : getMarkerHtml(primaryPoint),
             size: new maps.Size(size, size),

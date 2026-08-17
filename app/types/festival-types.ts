@@ -1,15 +1,3 @@
-export type FestivalPoint = {
-    id: string;
-    name: string;
-    region: string;
-    category: string;
-    status: "진행중" | "예정" | "종료";
-    lat: number;
-    lng: number;
-    count: number;
-    imageUrl?: string;
-};
-
 export type ApiResponse<T> = {
     success: boolean;
     code: string;
@@ -57,6 +45,10 @@ export type FestivalMapItem = Pick<
     | "longitude"
 >;
 
+export type FestivalPoint = FestivalMapItem & {
+    count: number;
+};
+
 export type FestivalListItem = Pick<
     FestivalRecord,
     | "festivalIdx"
@@ -89,4 +81,3 @@ export type FestivalMapData = {
 export type RegionsData = {
     regions: Region[];
 };
-

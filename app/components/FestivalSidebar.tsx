@@ -3,7 +3,6 @@
 import { type ReactNode, useMemo, useState } from "react";
 import type {
   ApiResponse,
-  FestivalPoint,
   FestivalListData,
   FestivalStatus,
   Region,
@@ -52,12 +51,12 @@ function statusLabel(status: FestivalStatus) {
   return festivalStatusOptions.find((option) => option.value === status)?.label ?? status;
 }
 
-function statusBadgeClass(status: FestivalStatus | FestivalPoint["status"]) {
-  if (status === "진행중" || status === "ONGOING") {
+function statusBadgeClass(status: FestivalStatus) {
+  if (status === "ONGOING") {
     return "bg-emerald-50 text-emerald-700 ring-emerald-200";
   }
 
-  if (status === "예정" || status === "UPCOMING") {
+  if (status === "UPCOMING") {
     return "bg-blue-50 text-blue-700 ring-blue-200";
   }
 
