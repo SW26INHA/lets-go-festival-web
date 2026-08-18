@@ -48,7 +48,10 @@ const defaultPopularFilters: SearchFiltersState = {
 };
 
 function statusLabel(status: FestivalStatus) {
-  return festivalStatusOptions.find((option) => option.value === status)?.label ?? status;
+  return (
+    festivalStatusOptions.find((option) => option.value === status)?.label ??
+    status
+  );
 }
 
 function statusBadgeClass(status: FestivalStatus) {
@@ -96,7 +99,9 @@ function buildFilterSummary(
   selectedStatuses: FestivalStatus[],
 ) {
   const parts: string[] = [];
-  const regionName = regions.find((region) => String(region.regionIdx) === regionIdx)?.regionName;
+  const regionName = regions.find(
+    (region) => String(region.regionIdx) === regionIdx,
+  )?.regionName;
 
   if (regionName) {
     parts.push(regionName);
@@ -126,21 +131,25 @@ function FestivalListHeader({
 }: {
   title: string;
   description: string;
-  onReset: () => void;
+  onReset?: () => void;
 }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-white px-4 py-3 shadow-sm">
       <div className="min-w-0">
-        <h2 className="text-base font-bold leading-tight text-slate-900">{title}</h2>
+        <h2 className="text-base font-bold leading-tight text-slate-900">
+          {title}
+        </h2>
         <p className="mt-1.5 text-xs leading-5 text-slate-500">{description}</p>
       </div>
-      <button
-        className="shrink-0 px-2 text-2xl font-semibold leading-none text-slate-500 transition hover:text-slate-700"
-        onClick={onReset}
-        type="button"
-      >
-        X
-      </button>
+      {onReset ? (
+        <button
+          className="shrink-0 px-2 text-2xl font-semibold leading-none text-slate-500 transition hover:text-slate-700"
+          onClick={onReset}
+          type="button"
+        >
+          X
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -186,7 +195,9 @@ export default function FestivalSidebar({
   const [loadingMore, setLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [listMode, setListMode] = useState<ListMode>("all");
-  const [searchFilters, setSearchFilters] = useState<SearchFiltersState | null>(null);
+  const [searchFilters, setSearchFilters] = useState<SearchFiltersState | null>(
+    null,
+  );
   const [searchResults, setSearchResults] = useState<SearchResultState>({
     festivals: [],
     totalElements: 0,
@@ -214,8 +225,7 @@ export default function FestivalSidebar({
         : [],
     [regions, searchFilters],
   );
-  const popularTabTitle =
-    listMode === "search" ? "검색 결과" : "진행중 축제";
+  const popularTabTitle = listMode === "search" ? "검색 결과" : "진행중 축제";
   const popularTabDescription =
     listMode === "search"
       ? `총 ${searchResults.totalElements}건${
@@ -252,9 +262,14 @@ export default function FestivalSidebar({
     return params;
   }
 
-  async function fetchFestivalList(filters: SearchFiltersState | null, page: number) {
+  async function fetchFestivalList(
+    filters: SearchFiltersState | null,
+    page: number,
+  ) {
     const response = await fetch(
-      createApiUrl(`/api/v1/festivals?${buildSearchParams(filters, page).toString()}`),
+      createApiUrl(
+        `/api/v1/festivals?${buildSearchParams(filters, page).toString()}`,
+      ),
     );
     const payload = (await response.json()) as ApiResponse<FestivalListData>;
 
@@ -294,7 +309,9 @@ export default function FestivalSidebar({
       setActiveTab("popular");
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "검색 중 알 수 없는 오류가 발생했습니다.",
+        error instanceof Error
+          ? error.message
+          : "검색 중 알 수 없는 오류가 발생했습니다.",
       );
       setSearchResults({
         festivals: [],
@@ -344,7 +361,9 @@ export default function FestivalSidebar({
       }));
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "추가 결과를 불러오는 중 오류가 발생했습니다.",
+        error instanceof Error
+          ? error.message
+          : "추가 결과를 불러오는 중 오류가 발생했습니다.",
       );
     } finally {
       setLoadingMore(false);
@@ -361,7 +380,9 @@ export default function FestivalSidebar({
       setActiveTab("popular");
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : "진행중 축제 목록을 불러오는 중 오류가 발생했습니다.",
+        error instanceof Error
+          ? error.message
+          : "진행중 축제 목록을 불러오는 중 오류가 발생했습니다.",
       );
       setSearchResults({
         festivals: [],
@@ -436,7 +457,9 @@ export default function FestivalSidebar({
       {activeTab === "search" ? (
         <section className="space-y-5 px-5 py-5">
           <fieldset>
-            <legend className="mb-3 text-sm font-bold text-slate-900">지역선택</legend>
+            <legend className="mb-3 text-sm font-bold text-slate-900">
+              지역선택
+            </legend>
             <div className="grid grid-cols-2 gap-2">
               <div className="relative">
                 <select
@@ -457,7 +480,9 @@ export default function FestivalSidebar({
           </fieldset>
 
           <fieldset>
-            <legend className="mb-3 text-sm font-bold text-slate-900">날짜범위</legend>
+            <legend className="mb-3 text-sm font-bold text-slate-900">
+              날짜범위
+            </legend>
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
               <div className="relative">
                 <select
@@ -494,13 +519,17 @@ export default function FestivalSidebar({
           </fieldset>
 
           <fieldset>
-            <legend className="mb-3 text-sm font-bold text-slate-900">축제 분류</legend>
+            <legend className="mb-3 text-sm font-bold text-slate-900">
+              축제 분류
+            </legend>
             <div className="space-y-2">
               <div className="grid grid-cols-3 gap-2">
                 {festivalStatusOptions.map((status) => (
                   <label
                     key={status.value}
-                    className={statusChipClassName(selectedStatuses.includes(status.value))}
+                    className={statusChipClassName(
+                      selectedStatuses.includes(status.value),
+                    )}
                   >
                     <input
                       checked={selectedStatuses.includes(status.value)}
@@ -564,7 +593,7 @@ export default function FestivalSidebar({
         <section className="flex min-h-0 flex-1 flex-col border-t border-slate-100 bg-[#f8fbff] px-5 pb-5 pt-3">
           <FestivalListHeader
             description={popularTabDescription}
-            onReset={handleListReset}
+            onReset={listMode === "search" ? handleListReset : undefined}
             title={popularTabTitle}
           />
 
@@ -582,70 +611,75 @@ export default function FestivalSidebar({
               }
 
               const target = event.currentTarget;
-              const remaining = target.scrollHeight - target.scrollTop - target.clientHeight;
+              const remaining =
+                target.scrollHeight - target.scrollTop - target.clientHeight;
 
               if (remaining < 96) {
                 void loadMoreResults();
               }
             }}
           >
-              <div className="space-y-3">
-                {searchResults.festivals.length > 0 ? (
-                  searchResults.festivals.map((festival) => (
-                    <FestivalCardButton
-                      onClick={() => handleFestivalSelect(String(festival.festivalIdx))}
-                      key={festival.festivalIdx}
-                    >
-                      <div className="flex gap-3">
-                        <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-blue-50">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            alt={festival.title}
-                            className="size-full object-cover"
-                            src={festival.originalImageUrl}
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <h3 className="truncate text-sm font-bold text-slate-900">
-                              {festival.title}
-                            </h3>
-                            <span
-                              className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ring-1 ${statusBadgeClass(
-                                festival.status,
-                              )}`}
-                            >
-                              {statusLabel(festival.status)}
-                            </span>
-                          </div>
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
-                            {festival.address1} {festival.address2}
-                          </p>
-                          <p className="mt-2 text-xs font-medium text-slate-600">
-                            {formatDate(festival.eventStartDate)} ~{" "}
-                            {formatDate(festival.eventEndDate)}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">{festival.telephone}</p>
-                        </div>
+            <div className="space-y-3">
+              {searchResults.festivals.length > 0 ? (
+                searchResults.festivals.map((festival) => (
+                  <FestivalCardButton
+                    onClick={() =>
+                      handleFestivalSelect(String(festival.festivalIdx))
+                    }
+                    key={festival.festivalIdx}
+                  >
+                    <div className="flex gap-3">
+                      <div className="size-16 shrink-0 overflow-hidden rounded-xl bg-blue-50">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          alt={festival.title}
+                          className="size-full object-cover"
+                          src={festival.originalImageUrl}
+                        />
                       </div>
-                    </FestivalCardButton>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
-                    <p className="text-sm font-semibold text-slate-700">
-                      검색 결과가 없습니다.
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      조건을 조금 넓혀서 다시 검색해보세요.
-                    </p>
-                  </div>
-                )}
-                {loadingMore ? (
-                  <div className="py-3 text-center text-xs font-medium text-slate-500">
-                    더 불러오는 중...
-                  </div>
-                ) : null}
-              </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="truncate text-sm font-bold text-slate-900">
+                            {festival.title}
+                          </h3>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ring-1 ${statusBadgeClass(
+                              festival.status,
+                            )}`}
+                          >
+                            {statusLabel(festival.status)}
+                          </span>
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                          {festival.address1} {festival.address2}
+                        </p>
+                        <p className="mt-2 text-xs font-medium text-slate-600">
+                          {formatDate(festival.eventStartDate)} ~{" "}
+                          {formatDate(festival.eventEndDate)}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {festival.telephone}
+                        </p>
+                      </div>
+                    </div>
+                  </FestivalCardButton>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+                  <p className="text-sm font-semibold text-slate-700">
+                    검색 결과가 없습니다.
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    조건을 조금 넓혀서 다시 검색해보세요.
+                  </p>
+                </div>
+              )}
+              {loadingMore ? (
+                <div className="py-3 text-center text-xs font-medium text-slate-500">
+                  더 불러오는 중...
+                </div>
+              ) : null}
+            </div>
           </div>
         </section>
       ) : null}
