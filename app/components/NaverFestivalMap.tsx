@@ -59,7 +59,10 @@ type NaverFestivalMapProps = {
 const naverMapKey = process.env.NEXT_PUBLIC_NAVER_MAP_NCP_KEY_ID;
 
 function statusLabel(status: FestivalStatus) {
-  return festivalStatusOptions.find((option) => option.value === status)?.label ?? status;
+  return (
+    festivalStatusOptions.find((option) => option.value === status)?.label ??
+    status
+  );
 }
 
 function formatDate(date: string) {
@@ -82,9 +85,24 @@ function getMarkerHtml(point: FestivalPoint) {
   const size = getMarkerSize(point.count);
   const imageUrl = point.thumbnailImageUrl;
 
+  const outerBubbleColor =
+    point.status === "ONGOING"
+      ? "rgba(34, 197, 94, 0.4)"
+      : point.status === "UPCOMING"
+        ? "rgba(59, 130, 246, 0.25)"
+        : "rgba(148, 163, 184, 0.25)";
+
   if (!imageUrl) {
     return `
-      <button class="naver-cluster-bubble" style="width:${size}px;height:${size}px" aria-label="${point.title}">
+      <button
+        class="naver-cluster-bubble"
+        style="
+          width:${size}px;
+          height:${size}px;
+          box-shadow: 0 0 0 8px ${outerBubbleColor};
+        "
+        aria-label="${point.title}"
+      >
       </button>
     `;
   }
@@ -92,7 +110,12 @@ function getMarkerHtml(point: FestivalPoint) {
   return `
     <button
       class="naver-cluster-bubble naver-cluster-bubble--image"
-      style="width:${size}px;height:${size}px;background-image:url('${imageUrl}');"
+      style="
+        width:${size}px;
+        height:${size}px;
+        background-image:url('${imageUrl}');
+        box-shadow: 0 0 0 8px ${outerBubbleColor};
+      "
       aria-label="${point.title}"
     >
     </button>
@@ -100,6 +123,22 @@ function getMarkerHtml(point: FestivalPoint) {
 }
 
 function buildHoverCardHtml(point: FestivalPoint) {
+  const statusColor =
+    point.status === "ONGOING"
+      ? {
+          background: "#dcfce7",
+          color: "#16a34a",
+        }
+      : point.status === "UPCOMING"
+        ? {
+            background: "#eff6ff",
+            color: "#2563eb",
+          }
+        : {
+            background: "#f1f5f9",
+            color: "#64748b",
+          };
+
   const imageBlock = point.thumbnailImageUrl
     ? `<img src="${point.thumbnailImageUrl}" alt="${
         point.title
@@ -140,8 +179,8 @@ function buildHoverCardHtml(point: FestivalPoint) {
             flex-shrink:0;
             padding:4px 8px;
             border-radius:999px;
-            background:#eff6ff;
-            color:#2563eb;
+            background:${statusColor.background};
+            color:${statusColor.color};
             font-size:11px;
             font-weight:700;
           ">${statusLabel(point.status)}</span>
@@ -167,7 +206,10 @@ function buildHoverCardHtml(point: FestivalPoint) {
   `;
 }
 
-export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMapProps) {
+export default function NaverFestivalMap({
+  points,
+  focusPoint,
+}: NaverFestivalMapProps) {
   const mapElementRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<NaverMapInstance | null>(null);
   const markersRef = useRef<NaverMarkerInstance[]>([]);
@@ -184,7 +226,12 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
   }, []);
 
   useEffect(() => {
-    if (!scriptReady || !mapElementRef.current || !window.naver?.maps || mapRef.current) {
+    if (
+      !scriptReady ||
+      !mapElementRef.current ||
+      !window.naver?.maps ||
+      mapRef.current
+    ) {
       return;
     }
 
@@ -382,8 +429,8 @@ export default function NaverFestivalMap({ points, focusPoint }: NaverFestivalMa
               네이버 지도 키가 필요합니다
             </p>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              `.env.local`에 `NEXT_PUBLIC_NAVER_MAP_NCP_KEY_ID`를 설정하면
-              이 영역에 실제 네이버 지도가 표시됩니다.
+              `.env.local`에 `NEXT_PUBLIC_NAVER_MAP_NCP_KEY_ID`를 설정하면 이
+              영역에 실제 네이버 지도가 표시됩니다.
             </p>
           </div>
         </div>
